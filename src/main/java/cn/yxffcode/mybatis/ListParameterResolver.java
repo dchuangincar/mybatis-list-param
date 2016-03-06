@@ -38,6 +38,7 @@ import java.util.Properties;
             CacheKey.class, BoundSql.class}), @Signature(type = Executor.class, method = "update",
     args = {MappedStatement.class, Object.class})})
 public class ListParameterResolver implements Interceptor {
+
   @Override public Object intercept(Invocation invocation) throws Throwable {
     final Object[] args = invocation.getArgs();
     MappedStatement ms = (MappedStatement) args[0];
@@ -61,19 +62,20 @@ public class ListParameterResolver implements Interceptor {
       return invocation.proceed();
     }
 
-    Map<String, Object> paramMap = null;
-    //注意参数的处理,参数可能是map,也可能是普通对象,当参数是普通对象时,需要转换成map
-    if (parameter != null && parameter instanceof Map) {
-      paramMap = (Map<String, Object>) parameter;
-    }
-    if (paramMap == null) {
-      paramMap = new MapperMethod.MapperParamMap<>();
-      for (int k = 0, s = parameterMappings.size(); k < s; k++) {
-        ParameterMapping pm = parameterMappings.get(k);
-        paramMap.put(pm.getProperty(), mo.getValue(pm.getProperty()));
-      }
-    }
+    Map<String, Object> paramMap = normalizeParameters(parameter, parameterMappings, mo);
 
+    rebuildBoundSql(boundSql, parameterMappings, paramPositions, paramMap);
+
+    args[1] = paramMap;
+    args[0] = MappedStatementUtils.copyMappedStatement(ms, boundSql);
+    return invocation.proceed();
+  }
+
+  private void rebuildBoundSql(BoundSql boundSql, List<ParameterMapping> parameterMappings,
+                               List<ListParamWrapper> paramPositions,
+                               Map<String, Object> paramMap)
+      throws NoSuchMethodException, InstantiationException, IllegalAccessException,
+      java.lang.reflect.InvocationTargetException {
     String sql = boundSql.getSql();
     int lastAppended = -1;
     StringBuilder sb = new StringBuilder();
@@ -117,9 +119,24 @@ public class ListParameterResolver implements Interceptor {
     }
     MappedStatementUtils.setField(boundSql, "parameterMappings", newParameterMappings);
     MappedStatementUtils.setField(boundSql, "sql", sb.toString());
-    args[1] = paramMap;
-    args[0] = MappedStatementUtils.copyMappedStatement(ms, boundSql);
-    return invocation.proceed();
+  }
+
+  private Map<String, Object> normalizeParameters(Object parameter,
+                                                  List<ParameterMapping> parameterMappings,
+                                                  MetaObject mo) {
+    Map<String, Object> paramMap = null;
+    //注意参数的处理,参数可能是map,也可能是普通对象,当参数是普通对象时,需要转换成map
+    if (parameter != null && parameter instanceof Map) {
+      paramMap = (Map<String, Object>) parameter;
+    }
+    if (paramMap == null) {
+      paramMap = new MapperMethod.MapperParamMap<>();
+      for (int k = 0, s = parameterMappings.size(); k < s; k++) {
+        ParameterMapping pm = parameterMappings.get(k);
+        paramMap.put(pm.getProperty(), mo.getValue(pm.getProperty()));
+      }
+    }
+    return paramMap;
   }
 
   private ParameterMapping copyParameterMappingForNewProperty(
