@@ -24,6 +24,11 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
+ * 支持参数为list的插件实现
+ * <p/>
+ * 在使用in语句时,往往参数为集合或者数组,需要将mapper文件中写<forEach>,此插件
+ * 的目的是为了将forEach从mapper文件中去掉,SQL直接支持in(#{list})
+ *
  * @author gaohang on 16/3/3.
  */
 @Intercepts({@Signature(type = Executor.class, method = "query",
@@ -41,7 +46,8 @@ public class ListParameterResolver implements Interceptor {
         (BoundSql) args[args.length - 1] :
         ms.getBoundSql(parameter);
     //绑定参数
-    List<ParameterMapping> parameterMappings = Collections.unmodifiableList(boundSql.getParameterMappings());
+    List<ParameterMapping> parameterMappings =
+        Collections.unmodifiableList(boundSql.getParameterMappings());
     if (parameterMappings == null || parameterMappings.isEmpty() || parameter == null) {
       return invocation.proceed();
     }
