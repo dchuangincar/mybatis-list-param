@@ -14,6 +14,8 @@ import org.apache.ibatis.plugin.Signature;
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.util.AbstractList;
@@ -38,6 +40,8 @@ import java.util.Properties;
             CacheKey.class, BoundSql.class}), @Signature(type = Executor.class, method = "update",
     args = {MappedStatement.class, Object.class})})
 public class ListParameterResolver implements Interceptor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ListParameterResolver.class);
 
   @Override public Object intercept(Invocation invocation) throws Throwable {
     final Object[] args = invocation.getArgs();
@@ -65,6 +69,8 @@ public class ListParameterResolver implements Interceptor {
     Map<String, Object> paramMap = normalizeParameters(parameter, parameterMappings, mo);
 
     rebuildBoundSql(boundSql, parameterMappings, paramPositions, paramMap);
+
+    LOGGER.debug("rebuilded sql:{}", boundSql.getSql());
 
     args[1] = paramMap;
     args[0] = MappedStatementUtils.copyMappedStatement(ms, boundSql);
