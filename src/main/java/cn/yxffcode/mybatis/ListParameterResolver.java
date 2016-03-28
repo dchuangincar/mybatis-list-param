@@ -174,7 +174,13 @@ public class ListParameterResolver implements Interceptor {
     List<ListParamWrapper> positionMap = new ArrayList<>(2);
     for (int i = 0, j = parameterMappings.size(); i < j; i++) {
       ParameterMapping parameterMapping = parameterMappings.get(i);
+      if (!mo.hasGetter(parameterMapping.getProperty())) {
+        continue;
+      }
       final Object value = mo.getValue(parameterMapping.getProperty());
+      if (value == null) {
+        continue;
+      }
       if (!(value instanceof Iterable) && !value.getClass().isArray()) {
         continue;
       }
@@ -194,6 +200,11 @@ public class ListParameterResolver implements Interceptor {
             return array.length;
           }
         };
+      }
+
+      if (iterable == null) {
+        throw new NullPointerException(
+            "list or array is null,parameter:" + parameterMapping.getProperty());
       }
 
       String sql = boundSql.getSql();
